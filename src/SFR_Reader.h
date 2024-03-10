@@ -28,7 +28,7 @@
  *
  *  	detector1.srtUID();
  *
- *  Copyright (C) 2022 Mark Bradley (MGB)
+ *  Copyright (C) 2022 MGB
  *  Copyright (C) 2022 Martin Snashall
  *  Copyright (C) 2024 Alex Shepherd
  *
