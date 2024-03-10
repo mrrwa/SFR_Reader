@@ -1,0 +1,29 @@
+{
+    "name":"SFR_Reader",
+    "description":"This library allows you to interface to StaRFIshrail I2C RFID Readers",
+    "keywords":"StaRFIshrail",
+    "authors": [
+        {
+            "name":"Martin Snashall"
+        },
+        {
+            "name":"Alex Shepherd"
+        },
+    ],
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/mrrwa/SFR_Reader"
+    },
+    "version": "0.1.0",
+    "license": "LGPL-2.1-or-later",
+    "frameworks": "arduino",
+    "platforms": "*",
+    "build": {
+        "srcFilter" : [
+            "-<.git/>",
+            "-<examples/>",
+            "+<*>"
+        ],
+    }
+  }
+  
