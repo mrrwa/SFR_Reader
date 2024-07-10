@@ -50,26 +50,52 @@
  *
  */
 
-// This enumeration represents the 4 different status code returned by the scan() method
-enum SRF_Read_Status {SFR_NO_TAG, SFR_TAG_ENTER, SFR_TAG_REPEAT, SFR_TAG_EXIT};
+// #define ENABLE_DEBUG 
+#ifdef ENABLE_DEBUG
+ #define DebugPrint(x)		Serial.print(x)
+ #define DebugPrint2(x,y)	Serial.print(x,y)
+ #define DebugPrintln(x)	Serial.println(x)
+ #define DebugPrint2ln(x,y)	Serial.println(x,y)
+#else 
+ #define DebugPrint(x)
+ #define DebugPrint2(x,y)
+ #define DebugPrintln(x)
+ #define DebugPrint2ln(x,y)
+#endif
 
-class SFR_Reader
-{
-  int i2cAdd;							  // Reader I2C Address	
-  byte lenFIFO;             	          // Number of bytes in the FIFO register
-  int inFIFO[9];                	      // Array to hold bytes read from FIFO
-  int prevFIFO[9];                  	  // Array to hold the previous bytes read from FIFO
-  byte errorFlags;                 		  // Byte with value read from the Error Flages register
-  byte led = 0;                     	  // Value to be written to the LED control register
-  char UIDStrBuffer[20];            	  // Local string buffer for Str conversions
-  SRF_Read_Status UID_Status = SFR_NO_TAG;
-  bool waiting = false;             	  // TRUE while waiting for tag to read - Waiting time is normally in the range 8 to 12 mS
-  unsigned long startMillis = 0;    	  // start time of wait
-  unsigned long waitMillis = 10;    	  // time to wait for a tag to come in range and be read, in mS
-  unsigned long loopstartMillis = 0;	  // Timing check
+// This enumeration represents the 4 different status code returned by the scan() method
+enum SRF_Read_Status { SFR_INIT, 
+                       SFR_NO_TAG,
+                       SFR_TAG_EXIT,
+                       SFR_TAG_ENTER,
+                       SFR_TAG_REPEAT};
+
+class SFR_Reader {
+  int i2cAdd;             // Reader I2C Address
+  byte IRQ0;              // IRQ0 Status Bits
+  byte lenFIFO;           // Number of bytes in the FIFO register
+  int inFIFO[9];          // Array to hold bytes read from FIFO
+  int prevFIFO[9];        // Array to hold the previous bytes read from FIFO
+  byte errorFlags;        // Byte with value read from the Error Flages register
+  byte led = 0;           // Value to be written to the LED control register
+  char UIDStrBuffer[20];  // Local string buffer for Str conversions
+  SRF_Read_Status UID_Status = SFR_INIT;
+  bool waiting = false;               // TRUE while waiting for tag to read - Waiting time is normally in the range 8 to 12 mS
+  uint8_t noReadCount = 0;				  
+  unsigned long startMillis = 0;      // start time of wait
+  unsigned long waitMillis = 12;      // time to wait for a tag to come in range and be read, in mS
+  unsigned long loopstartMillis = 0;  // Timing check
   unsigned long loopMillis = 0;
-  TwoWire * i2cInterface;				  // I2C Interface of the Arduino to use
- 
+  
+  TwoWire* i2cInterface;  // I2C Interface of the Arduino to use
+
+  PROGMEM const char* SFR_INIT_Str PROGMEM = "Initial";
+  PROGMEM const char* SFR_NO_TAG_Str PROGMEM = "No Tag";
+  PROGMEM const char* SFR_TAG_EXIT_Str PROGMEM = "Tag Exit";
+  PROGMEM const char* SFR_TAG_ENTER_Str PROGMEM = "Tag Enter";
+  PROGMEM const char* SFR_TAG_REPEAT_Str PROGMEM = "Tag Repeat";
+  PROGMEM const char* SRF_Read_Status_Str[5] = { SFR_INIT_Str, SFR_NO_TAG_Str, SFR_TAG_EXIT_Str, SFR_TAG_ENTER_Str, SFR_TAG_REPEAT_Str };
+
   // Constructor - creates a RFID scan object
   // and initializes the member variables and state
 public:
@@ -78,16 +104,16 @@ public:
     i2cAdd = i2cAddress;
   }
 
-  void init(TwoWire * newi2cInterface)  // *** Setup RFID registers ***
+  void init(TwoWire* newi2cInterface)  // *** Setup RFID registers ***
   {
-  	i2cInterface = newi2cInterface;
+    i2cInterface = newi2cInterface;
 
     // Soft Reset
-	i2cInterface->beginTransmission(i2cAdd);
-    i2cInterface->write(0x00);  
-	i2cInterface->write(0x1F);
-	i2cInterface->endTransmission();
-  	
+    i2cInterface->beginTransmission(i2cAdd);
+    i2cInterface->write(0x00);
+    i2cInterface->write(0x1F);
+    i2cInterface->endTransmission();
+
     //FIFO Control
     i2cInterface->beginTransmission(i2cAdd);  // transmit to device
     i2cInterface->write(0x02);                // device address is specified in datasheet
@@ -162,9 +188,14 @@ public:
 
   SRF_Read_Status scan()  // Scan for RFID tag
   {
-    if (waiting == false)  // Not waiting for the timer to expire so initalise a scan
+    DebugPrint("scan() waiting: ");
+    DebugPrint(waiting);
+    DebugPrint("  millis: ");
+    DebugPrintln(millis());
+
+    // Wait time has passed
+    if (!waiting)  // Not waiting for the timer to expire so initalise a scan
     {
-      UID_Status = SFR_NO_TAG;
       loopstartMillis = millis();  // Loop timer
       // Flush FIFO
       i2cInterface->beginTransmission(i2cAdd);  // transmit to device
@@ -194,92 +225,135 @@ public:
       waiting = true;
     }
 
-    else if (waiting == true && (millis() >= startMillis + waitMillis))  // Wait time has passed
+    else if (waiting)
     {
-      // Dummy - Read register 04 : length of data in FIFO
-      i2cInterface->beginTransmission(i2cAdd);
-      i2cInterface->write(0x04);
-      i2cInterface->endTransmission();
-
-      //Read register 04 : length of data in FIFO
-      i2cInterface->beginTransmission(i2cAdd);
-      i2cInterface->write(0x04);
-      i2cInterface->requestFrom(i2cAdd, 1);
-      lenFIFO = i2cInterface->read();
-      i2cInterface->endTransmission();
-
-      // Dummy - Read values from FIFO
-      i2cInterface->beginTransmission(i2cAdd);
-      i2cInterface->write(0x05);
-      i2cInterface->endTransmission();
-
-      // Read values from FIFO
-      i2cInterface->beginTransmission(i2cAdd);
-      i2cInterface->write(0x05);
-      i2cInterface->requestFrom(i2cAdd, 9);  // read the byte values from FIFO
-      int byteCounter = 0;          // Index for array of bytes read from FIFO
-      while (i2cInterface->available())      //
+      if (millis() < (startMillis + waitMillis))  // Wait time has passed
       {
-        inFIFO[byteCounter] = i2cInterface->read();  // Capture received byte
-        byteCounter++;                      // Increment index counter
-      }
+        //Dummy - Read register 06 : IRQ0 Status
+        i2cInterface->beginTransmission(i2cAdd);
+        i2cInterface->write(0x06);
+        i2cInterface->endTransmission();
 
-      // Read ERROR flags - register 0a
-      i2cInterface->beginTransmission(i2cAdd);
-      i2cInterface->write(0x0a);
-      i2cInterface->endTransmission();
+        //Read register 06 : IRQ0 Status
+        i2cInterface->beginTransmission(i2cAdd);
+        i2cInterface->write(0x06);
+        i2cInterface->requestFrom(i2cAdd, 1);
+        IRQ0 = i2cInterface->read();
+        i2cInterface->endTransmission();
 
-      // Read ERROR flags
-      i2cInterface->beginTransmission(i2cAdd);
-      i2cInterface->write(0x0a);
-      i2cInterface->requestFrom(i2cAdd, 1);  // read the current GPIO output latches
-      errorFlags = i2cInterface->read();     // receive a byte as character
+        DebugPrint("IRQ0: ");
+        DebugPrint2(IRQ0, HEX);
+        DebugPrint(" ");
+        DebugPrint2ln(IRQ0, BIN);
+      } 
+      else
+      {
+        waiting = false;
 
-      // Work out STATUS
-      // 0= No tag detected (0)   1= Tag entered field (R)  2= Tag still in field (C)  3= Tag exited field (U)
+        // Dummy - Read ERROR flags - register 0a
+        i2cInterface->beginTransmission(i2cAdd);
+        i2cInterface->write(0x0a);
+        i2cInterface->endTransmission();
 
-      if (errorFlags == 0 && lenFIFO == 13) {  // Valid tag detected
-        if (memcmp(inFIFO, prevFIFO, sizeof(inFIFO)) == 0) {
-          UID_Status = SFR_TAG_REPEAT;
-        }  // Valid tag but same UID as last time
+        // Read ERROR flags - register 0a
+        i2cInterface->beginTransmission(i2cAdd);
+        i2cInterface->write(0x0a);
+        i2cInterface->requestFrom(i2cAdd, 1);  // read the current GPIO output latches
+        errorFlags = i2cInterface->read();     // receive a byte as character
 
-        else {
-          UID_Status = SFR_TAG_ENTER;  // Valid tag but different UID
-          memcpy(prevFIFO, inFIFO, sizeof(inFIFO));
+        // Dummy - Read register 04 : length of data in FIFO
+        i2cInterface->beginTransmission(i2cAdd);
+        i2cInterface->write(0x04);
+        i2cInterface->endTransmission();
+
+        //Read register 04 : length of data in FIFO
+        i2cInterface->beginTransmission(i2cAdd);
+        i2cInterface->write(0x04);
+        i2cInterface->requestFrom(i2cAdd, 1);
+        lenFIFO = i2cInterface->read();
+        i2cInterface->endTransmission();
+
+		if(lenFIFO)
+		{
+          // Dummy - Read values from FIFO
+          i2cInterface->beginTransmission(i2cAdd);
+          i2cInterface->write(0x05);
+          i2cInterface->endTransmission();
+
+          // Read values from FIFO
+          i2cInterface->beginTransmission(i2cAdd);
+          i2cInterface->write(0x05);
+          i2cInterface->requestFrom(i2cAdd, 9);  // read the byte values from FIFO
+          int byteCounter = 0;                   // Index for array of bytes read from FIFO
+          while (i2cInterface->available())      //
+          {
+            inFIFO[byteCounter] = i2cInterface->read();  // Capture received byte
+            byteCounter++;                               // Increment index counter
+          }
+		}
+        DebugPrint("errorFlags: ");
+        DebugPrint(errorFlags);
+        DebugPrint("  lenFIFO: ");
+        DebugPrintln(lenFIFO);
+
+        // Work out STATUS
+        if (errorFlags == 0)
+        {
+          if(lenFIFO == 13)  // Valid tag detected
+		  {
+			if (memcmp(inFIFO, prevFIFO, sizeof(inFIFO)) == 0)
+			{
+			  UID_Status = SFR_TAG_REPEAT;
+			}  // Valid tag but same UID as last time
+	
+			else
+			{
+			  UID_Status = SFR_TAG_ENTER;  // Valid tag but different UID
+			  memcpy(prevFIFO, inFIFO, sizeof(inFIFO));
+			}
+            noReadCount = 0;
+          }
+          else   // Invalid or no tag present
+          {
+          	if(++noReadCount >= 2)
+          	{
+              if (UID_Status > SFR_TAG_EXIT)
+              {
+                UID_Status = SFR_TAG_EXIT;
+              }
+              else
+              {
+                UID_Status = SFR_NO_TAG;
+                memset(inFIFO, 0, sizeof(inFIFO));
+                memset(prevFIFO, 0, sizeof(prevFIFO));
+              }
+            }
+          }
+        }
+        
+        // Set LED ON / OFF
+        if ((errorFlags == 0) && (lenFIFO == 13)) // Valid tag detected)
+        {
+          led = 0x00;                            //led=0x00= ON
+        }
+        else
+        {
+          led = 0x40;  //led=0x40= OFF
         }
 
-      } else {  // Invalid or no tag present
-        if (UID_Status == SFR_NO_TAG && lenFIFO == 0) {
-          UID_Status = SFR_NO_TAG;
-        } else {
-          UID_Status = SFR_TAG_EXIT;
-        }
-        memset(inFIFO, 0, sizeof(inFIFO)) ;
-        memset(prevFIFO, 0, sizeof(inFIFO)) ;
+        i2cInterface->beginTransmission(i2cAdd);
+        i2cInterface->write(0x45);
+        i2cInterface->write(led);  // set LED ON or OFF as required
+        i2cInterface->endTransmission();
       }
-
-      // Set LED ON / OFF
-      if (errorFlags == 0 && lenFIFO == 13) {  // Valid tag detected)
-        led = 0x00;                            //led=0x00= ON
-      } else {
-        led = 0x40;  //led=0x40= OFF
-      }
-
-      i2cInterface->beginTransmission(i2cAdd);
-      i2cInterface->write(0x45);
-      i2cInterface->write(led);  // set LED ON or OFF as required
-      i2cInterface->endTransmission();
-
-      waiting = false;
 
       loopMillis = millis() - loopstartMillis;  // Loop timing check
-    }  // still waiting for the timer to expire so do nothing.
+    }                                           // still waiting for the timer to expire so do nothing.
 
     return UID_Status;
   }
 
-  char * strUID()
-  {
+  char* strUID() {
     int chrIndex = 0;
     int nibble[2];
     char chr_nibble;
@@ -302,6 +376,14 @@ public:
     UIDStrBuffer[chrIndex] = 0;
 
     return UIDStrBuffer;
+  }
+
+  const char* StatusStr(void) {
+    return StatusStr(UID_Status);
+  }
+
+  const char* StatusStr(SRF_Read_Status Status) {
+    return SRF_Read_Status_Str[Status];
   }
 };
 
