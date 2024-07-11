@@ -6,5 +6,6 @@ This library was created by Alex Shepherd, based on the sample Arduino sketch pr
 
 For more details, the original files received from Martin are in the library's **extras** folder.
 
-Details about the StaRFIshrail Reader boards can be found on the website: [here].(https://www.starfishrail.co.uk/sfrconnect).
+Details about the StaRFIshrail Reader boards are no longer available on the original website, as its offline now.
+However, the content is still available from: [The Internet Archive here](https://web.archive.org/web/20240226013748/https://www.starfishrail.co.uk/sfrconnect)
 
