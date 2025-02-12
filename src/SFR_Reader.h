@@ -50,17 +50,13 @@
  *
  */
 
-// #define ENABLE_DEBUG 
+// #define ENABLE_DEBUG
 #ifdef ENABLE_DEBUG
- #define DebugPrint(x)		Serial.print(x)
- #define DebugPrint2(x,y)	Serial.print(x,y)
- #define DebugPrintln(x)	Serial.println(x)
- #define DebugPrint2ln(x,y)	Serial.println(x,y)
+ #define DebugPrint(...)	Serial.print(__VA_ARGS__)
+ #define DebugPrintln(...)	Serial.println(__VA_ARGS__)
 #else 
- #define DebugPrint(x)
- #define DebugPrint2(x,y)
- #define DebugPrintln(x)
- #define DebugPrint2ln(x,y)
+ #define DebugPrint(...)
+ #define DebugPrintln(...)
 #endif
 
 // This enumeration represents the 4 different status code returned by the scan() method
@@ -188,11 +184,12 @@ public:
 
   SRF_Read_Status scan()  // Scan for RFID tag
   {
+#ifdef ENABLE_DEBUG
     DebugPrint("scan() waiting: ");
     DebugPrint(waiting);
     DebugPrint("  millis: ");
     DebugPrintln(millis());
-
+#endif
     // Wait time has passed
     if (!waiting)  // Not waiting for the timer to expire so initalise a scan
     {
@@ -200,7 +197,7 @@ public:
       // Flush FIFO
       i2cInterface->beginTransmission(i2cAdd);  // transmit to device
       i2cInterface->write(0x02);                // device address is specified in datasheet
-      i2cInterface->write(0x80);                // sends value byte  was 0x80
+      i2cInterface->write(0xb0);                // sends value byte  was 0x80, changed to 0xb0
       i2cInterface->endTransmission();
 
       // Write FIFO with ASK UID
@@ -229,11 +226,7 @@ public:
     {
       if (millis() < (startMillis + waitMillis))  // Wait time has passed
       {
-        //Dummy - Read register 06 : IRQ0 Status
-        i2cInterface->beginTransmission(i2cAdd);
-        i2cInterface->write(0x06);
-        i2cInterface->endTransmission();
-
+#ifdef ENABLE_DEBUG
         //Read register 06 : IRQ0 Status
         i2cInterface->beginTransmission(i2cAdd);
         i2cInterface->write(0x06);
@@ -242,24 +235,14 @@ public:
         i2cInterface->endTransmission();
 
         DebugPrint("IRQ0: ");
-        DebugPrint2(IRQ0, HEX);
+        DebugPrint(IRQ0, HEX);
         DebugPrint(" ");
-        DebugPrint2ln(IRQ0, BIN);
+        DebugPrintln(IRQ0, BIN);
+#endif
       } 
       else
       {
         waiting = false;
-
-        // Dummy - Read ERROR flags - register 0a
-        i2cInterface->beginTransmission(i2cAdd);
-        i2cInterface->write(0x0a);
-        i2cInterface->endTransmission();
-
-        // Read ERROR flags - register 0a
-        i2cInterface->beginTransmission(i2cAdd);
-        i2cInterface->write(0x0a);
-        i2cInterface->requestFrom(i2cAdd, 1);  // read the current GPIO output latches
-        errorFlags = i2cInterface->read();     // receive a byte as character
 
         // Dummy - Read register 04 : length of data in FIFO
         i2cInterface->beginTransmission(i2cAdd);
@@ -285,16 +268,32 @@ public:
           i2cInterface->write(0x05);
           i2cInterface->requestFrom(i2cAdd, 9);  // read the byte values from FIFO
           int byteCounter = 0;                   // Index for array of bytes read from FIFO
-          while (i2cInterface->available())      //
+          while (i2cInterface->available() && (byteCounter < 9))      //
           {
             inFIFO[byteCounter] = i2cInterface->read();  // Capture received byte
             byteCounter++;                               // Increment index counter
           }
 		}
+
+        // Read ERROR flags - register 0a
+        i2cInterface->beginTransmission(i2cAdd);
+        i2cInterface->write(0x0a);
+        i2cInterface->requestFrom(i2cAdd, 1);  // read the current GPIO output latches
+        errorFlags = i2cInterface->read();     // receive a byte as character
+
+#ifdef ENABLE_DEBUG
         DebugPrint("errorFlags: ");
         DebugPrint(errorFlags);
         DebugPrint("  lenFIFO: ");
         DebugPrintln(lenFIFO);
+#endif
+
+        // Add missing Command identified by Olaf Krahmer
+        i2cInterface->beginTransmission(i2cAdd);
+        i2cInterface->write(0x02);
+        i2cInterface->write(0xFF);
+        i2cInterface->write(0x00);
+        i2cInterface->endTransmission();
 
         // Work out STATUS
         if (errorFlags == 0)
@@ -372,6 +371,33 @@ public:
         UIDStrBuffer[chrIndex++] = chr_nibble;
       }
     }
+
+    UIDStrBuffer[chrIndex] = 0;
+
+    return UIDStrBuffer;
+  }
+
+  const char binToHexAscii[17] PROGMEM = {"0123456789ABCDEF"};	
+
+
+  char* strMERG() {
+    int chrIndex = 0;
+    int nibble[2];
+    char chr_nibble;
+
+    for (int i = 5; i > 0; i--) {
+      uint8_t byteVal = inFIFO[i];
+      UIDStrBuffer[chrIndex++] = binToHexAscii[byteVal >> 4];
+      UIDStrBuffer[chrIndex++] = binToHexAscii[byteVal & 0x0F];
+    }
+
+	// Calculate the Checksum
+    uint8_t checksum = inFIFO[5];
+    for (int i = 4; i > 0; i--)
+    	checksum ^= inFIFO[i];
+
+    UIDStrBuffer[chrIndex++] = binToHexAscii[checksum >> 4];
+    UIDStrBuffer[chrIndex++] = binToHexAscii[checksum & 0x0F];
 
     UIDStrBuffer[chrIndex] = 0;
 

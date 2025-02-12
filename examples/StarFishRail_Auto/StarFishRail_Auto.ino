@@ -56,9 +56,9 @@ void setup() {
     else {  // Device Found
       Serial.println(" Found");
 
+      readers[numReaders] = new SFR_Reader(i2cAddr);
+      readers[numReaders]->init(&Wire);
       numReaders++;
-      readers[readerIndex] = new SFR_Reader(i2cAddr);
-      readers[readerIndex]->init(&Wire);
     } 
   }
 

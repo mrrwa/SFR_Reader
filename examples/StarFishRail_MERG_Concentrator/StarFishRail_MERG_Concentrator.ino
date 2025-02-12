@@ -21,7 +21,6 @@
  */
 
 #include <SFR_Reader.h>
-#include <Keyboard.h>
 
 #define NUM_READERS 4   // Maximum Number of I2C RFID Readers
 int i2cBaseAdd = 0x28;  // Base Address of I2C RFID Readers.
@@ -35,55 +34,46 @@ int        readerIndex = 0;
 void setup() {
   Wire.begin();
   Wire.setClock(200000);  // Set i2c bus speed
+
   Serial.begin(115200);   // 9600 default for Arduino serial monitor
   while(!Serial && millis() < 3000)
     delay(10);
-
-  Serial.println("Starfish Rail RFID via I2C Class version");
 
   for(readerIndex = 0; readerIndex < NUM_READERS; readerIndex++)
   {
     int i2cAddr = i2cBaseAdd + readerIndex;
 
-    Serial.print("Detecting Reader at address: ");
-    Serial.print(i2cAddr, HEX);
-
     Wire.beginTransmission(i2cAddr);
     uint8_t error = Wire.endTransmission();
 
-    if(error)
-      Serial.println(" Not Found");
-
-    else {  // Device Found
-      Serial.println(" Found");
-
+    if(!error)
+    {  // Device Found
       readers[numReaders] = new SFR_Reader(i2cAddr);
       readers[numReaders]->init(&Wire);
       numReaders++;
     } 
   }
 
-  Keyboard.begin();
-
   readerIndex = 0;
 }
 
 void loop() {
- if( readerIndex >= numReaders)
+  if( readerIndex >= numReaders)
     readerIndex = 0;
 
   SRF_Read_Status status = readers[readerIndex]->scan();
-  if((status > SFR_INIT) && (lastStatus[readerIndex] != status))
-  {
+  if((status > SFR_INIT) && (lastStatus[readerIndex] != status)){
     lastStatus[readerIndex] = status;
 
-    if( status == SFR_TAG_ENTER)
-    {
-      Keyboard.print(readerIndex + 1);
-      Keyboard.print('\t');
-      Keyboard.println(readers[readerIndex]->strUID());
-    }
+    Serial.write('A' + readerIndex);
+    Serial.print(readers[readerIndex]->strMERG());
+    Serial.write(0x0D); // CR
+    Serial.write(0x0A); // LF
+    Serial.write('>');  // ETX replaced by '>'
   }
 
   readerIndex++;
 }
+
+//  1  2  3  4  5  6  7  8
+// E0 04 01 50 EF 83 24 43
