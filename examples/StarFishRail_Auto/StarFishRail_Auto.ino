@@ -40,28 +40,39 @@ void setup() {
 
   Serial.println("Starfish Rail RFID via I2C Class version");
 
-  for(readerIndex = 0; readerIndex < NUM_READERS; readerIndex++)
-  {
-    int i2cAddr = i2cBaseAdd + readerIndex;
+  while (numReaders == 0) { 
+    for(readerIndex = 0; readerIndex < NUM_READERS; readerIndex++)
+    {
+      int i2cAddr = i2cBaseAdd + readerIndex;
 
-    Serial.print("Detecting Reader at address: ");
-    Serial.print(i2cAddr, HEX);
+      Serial.print("Detecting Reader at address: ");
+      Serial.print(i2cAddr, HEX);
 
-    Wire.beginTransmission(i2cAddr);
-    uint8_t error = Wire.endTransmission();
+      Wire.beginTransmission(i2cAddr);
+      uint8_t error = Wire.endTransmission();
 
-    if(error)
-      Serial.println(" Not Found");
+      if(error)
+        Serial.println(" Not Found");
 
-    else {  // Device Found
-      Serial.println(" Found");
+      else {  // Device Found
+        Serial.println(" Found");
 
-      readers[numReaders] = new SFR_Reader(i2cAddr);
-      readers[numReaders]->init(&Wire);
-      numReaders++;
-    } 
+        readers[numReaders] = new SFR_Reader(i2cAddr); // index with numReaders instead of readerIndex to avoid a crash
+        readers[numReaders]->init(&Wire);
+        numReaders++;
+      } 
+    }
+    int sec = 0;
+    if (numReaders == 0) {
+      Serial.println("No readers found. Attach readers");
+      Serial.print("Trying again in 10 seconds ");
+      for (sec = 0; sec < 10; sec++) {
+        Serial.print(".");
+        delay(1000);
+      }
+      Serial.println();
+    }
   }
-
   readerIndex = 0;
 }
 

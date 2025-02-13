@@ -230,9 +230,9 @@ public:
         //Read register 06 : IRQ0 Status
         i2cInterface->beginTransmission(i2cAdd);
         i2cInterface->write(0x06);
+        i2cInterface->endTransmission();
         i2cInterface->requestFrom(i2cAdd, 1);
         IRQ0 = i2cInterface->read();
-        i2cInterface->endTransmission();
 
         DebugPrint("IRQ0: ");
         DebugPrint(IRQ0, HEX);
@@ -244,28 +244,21 @@ public:
       {
         waiting = false;
 
-        // Dummy - Read register 04 : length of data in FIFO
-        i2cInterface->beginTransmission(i2cAdd);
-        i2cInterface->write(0x04);
-        i2cInterface->endTransmission();
-
         //Read register 04 : length of data in FIFO
         i2cInterface->beginTransmission(i2cAdd);
         i2cInterface->write(0x04);
+        i2cInterface->endTransmission();
+
         i2cInterface->requestFrom(i2cAdd, 1);
         lenFIFO = i2cInterface->read();
-        i2cInterface->endTransmission();
 
 		if(lenFIFO)
 		{
-          // Dummy - Read values from FIFO
+          // Read values from FIFO
           i2cInterface->beginTransmission(i2cAdd);
           i2cInterface->write(0x05);
           i2cInterface->endTransmission();
 
-          // Read values from FIFO
-          i2cInterface->beginTransmission(i2cAdd);
-          i2cInterface->write(0x05);
           i2cInterface->requestFrom(i2cAdd, 9);  // read the byte values from FIFO
           int byteCounter = 0;                   // Index for array of bytes read from FIFO
           while (i2cInterface->available() && (byteCounter < 9))      //
@@ -278,6 +271,8 @@ public:
         // Read ERROR flags - register 0a
         i2cInterface->beginTransmission(i2cAdd);
         i2cInterface->write(0x0a);
+        i2cInterface->endTransmission();
+        
         i2cInterface->requestFrom(i2cAdd, 1);  // read the current GPIO output latches
         errorFlags = i2cInterface->read();     // receive a byte as character
 
@@ -287,13 +282,6 @@ public:
         DebugPrint("  lenFIFO: ");
         DebugPrintln(lenFIFO);
 #endif
-
-        // Add missing Command identified by Olaf Krahmer
-        i2cInterface->beginTransmission(i2cAdd);
-        i2cInterface->write(0x02);
-        i2cInterface->write(0xFF);
-        i2cInterface->write(0x00);
-        i2cInterface->endTransmission();
 
         // Work out STATUS
         if (errorFlags == 0)
