@@ -176,7 +176,7 @@ SRF_Read_Status SFR_Reader::scan (TwoWire* i2cInterface) // Scan for RFID tag
             i2cInterface->beginTransmission (i2cAdd);
             i2cInterface->write (0x06);
             i2cInterface->endTransmission();
-            i2cInterface->requestFrom (i2cAdd, 1);
+            i2cInterface->requestFrom (i2cAdd, (uint8_t)1);
             IRQ0 = i2cInterface->read();
 
             DebugPrint ("IRQ0: ");
@@ -194,7 +194,7 @@ SRF_Read_Status SFR_Reader::scan (TwoWire* i2cInterface) // Scan for RFID tag
             i2cInterface->write (0x04);
             i2cInterface->endTransmission();
 
-            i2cInterface->requestFrom (i2cAdd, 1);
+            i2cInterface->requestFrom (i2cAdd, (uint8_t)1);
             lenFIFO = i2cInterface->read();
 
             if (lenFIFO)
@@ -204,7 +204,7 @@ SRF_Read_Status SFR_Reader::scan (TwoWire* i2cInterface) // Scan for RFID tag
                 i2cInterface->write (0x05);
                 i2cInterface->endTransmission();
 
-                i2cInterface->requestFrom (i2cAdd, 9); // read the byte values from FIFO
+                i2cInterface->requestFrom (i2cAdd, (uint8_t)9); // read the byte values from FIFO
                 int byteCounter = 0;                   // Index for array of bytes read from FIFO
                 while (i2cInterface->available() && (byteCounter < 9))      //
                 {
@@ -218,7 +218,7 @@ SRF_Read_Status SFR_Reader::scan (TwoWire* i2cInterface) // Scan for RFID tag
             i2cInterface->write (0x0a);
             i2cInterface->endTransmission();
 
-            i2cInterface->requestFrom (i2cAdd, 1); // read the current GPIO output latches
+            i2cInterface->requestFrom (i2cAdd, (uint8_t)1); // read the current GPIO output latches
             errorFlags = i2cInterface->read();     // receive a byte as character
 
             #ifdef ENABLE_ERROR_LEN_DEBUG
