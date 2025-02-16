@@ -1,7 +1,8 @@
 #ifndef SFR_READER_INCLUDED
 #define SFR_READER_INCLUDED
 
-#include "Wire.h"
+#include <Arduino.h>
+#include <Wire.h>
 
 /*  This library provides a class object to use with the Starfish Rail I2C RFID modules
  *  Up to 4 readers can be connected (limited by I2C bus address range for these devices)
@@ -77,13 +78,13 @@ private:
     unsigned long loopstartMillis = 0;  // Timing check
     unsigned long loopMillis = 0;
 
-    PROGMEM const char* SFR_INIT_Str PROGMEM = "Initial";
-    PROGMEM const char* SFR_NO_TAG_Str PROGMEM = "No Tag";
-    PROGMEM const char* SFR_TAG_EXIT_Str PROGMEM = "Tag Exit";
-    PROGMEM const char* SFR_TAG_ENTER_Str PROGMEM = "Tag Enter";
-    PROGMEM const char* SFR_TAG_REPEAT_Str PROGMEM = "Tag Repeat";
-    PROGMEM const char* SRF_Read_Status_Str[5] = { SFR_INIT_Str, SFR_NO_TAG_Str, SFR_TAG_EXIT_Str, SFR_TAG_ENTER_Str, SFR_TAG_REPEAT_Str };
-    const char binToHexAscii[17] PROGMEM = {"0123456789ABCDEF"};
+    const char* SFR_INIT_Str = (const char *) "Initial";
+    const char* SFR_NO_TAG_Str = (const char *) "No Tag";
+    const char* SFR_TAG_EXIT_Str = (const char *) "Tag Exit";
+    const char* SFR_TAG_ENTER_Str = (const char *) "Tag Enter";
+    const char* SFR_TAG_REPEAT_Str = (const char *) "Tag Repeat";
+    const char* SRF_Read_Status_Str[5] = { SFR_INIT_Str, SFR_NO_TAG_Str, SFR_TAG_EXIT_Str, SFR_TAG_ENTER_Str, SFR_TAG_REPEAT_Str };
+    const char binToHexAscii[17] = {"0123456789ABCDEF"};
 
 public:
     SFR_Reader (int i2cAddress);
