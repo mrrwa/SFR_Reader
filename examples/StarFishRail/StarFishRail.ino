@@ -3,17 +3,11 @@
  *  Avoids 'blocking' caused by 'delay' using a timer and a flag for each instance and can scan 4 readers
  *  As each reader state changes, the SFR_Reader library call the Event Handler, providing access to the current state
  *
- *  This example emulates the MERG RFID Data Concentrator and sends serial data from a number of readers
- *
+ *  This example prints the current state of the reader, including any EID tag identifier string to the serial monitor 
  */
 
-#include <SFR_Reader.h>
-#include <Keyboard.h>
-
-// As this sketch is intended to emulate a USB Keyboard HID Device, we normally diable all monitor output, but uncomment the line below to enable
-// monitor output for debugging purposes
-
-// #define ENABLE_DEBUG
+// Uncomment the line below to enable monitor output for debugging purposes
+#define ENABLE_DEBUG
 #ifdef ENABLE_DEBUG
 #define DebugPrint(...) Serial.print(__VA_ARGS__)
 #define DebugPrintln(...) Serial.println(__VA_ARGS__)
@@ -22,6 +16,7 @@
 #define DebugPrintln(...)
 #endif
 
+#include <SFR_Reader.h>
 
 // The SFR_ReaderGroup object takes the Arduino TwoWire (I2C) interface as a parameter and manages all the SFR_Reader objects for eacho f the readers connected to the I2C bus.
 SFR_ReaderGroup tagReaders = SFR_ReaderGroup(&Wire);
@@ -34,25 +29,16 @@ SFR_ReaderGroup tagReaders = SFR_ReaderGroup(&Wire);
 // - pReader: a pointer to the SFR_Reader object, to allow method calls to access the UID and other data and status values.
 
 void readerEventHandler(int readerGroupId, int readerId, SRF_Read_Status readStatus, SFR_Reader* pReader) {
-  // We only want to send the EID String once as the EID tag enters the reader's detection field
-  if (readStatus == SFR_TAG_ENTER) {
-    DebugPrint("Reader Group: ");
-    DebugPrint(readerGroupId);
-    DebugPrint("  Reader: ");
-    DebugPrint(readerId);
-    DebugPrint("  UID: ");
-    DebugPrint(pReader->strUID());
-    DebugPrint("  Status: ");
-    DebugPrint(readStatus);
-    DebugPrint("-");
-    DebugPrintln(pReader->StatusStr());
-
-    Serial.write('A' + readerId);
-    Serial.print(pReader->strMERG());
-    Serial.write(0x0D);  // CR
-    Serial.write(0x0A);  // LF
-    Serial.write('>');   // ETX replaced by '>'
-  }
+  DebugPrint("Reader Group: ");
+  DebugPrint(readerGroupId);
+  DebugPrint("  Reader: ");
+  DebugPrint(readerId);
+  DebugPrint("  UID: ");
+  DebugPrint(pReader->strUID());
+  DebugPrint("  Status: ");
+  DebugPrint(readStatus);
+  DebugPrint("-");
+  DebugPrintln(pReader->StatusStr());
 }
 
 void setup() {
@@ -63,9 +49,7 @@ void setup() {
     delay(10);
 #endif
 
-  DebugPrint("Starfish Rail RFID HID Keybaord example");
-
-  Keyboard.begin();
+  DebugPrintln("Starfish Rail RFID example");
 
   // Register the readerEventHandler function to be called when any SFR_Reader object changes state
   tagReaders.registerReaderEventHandler(readerEventHandler);
@@ -77,14 +61,14 @@ void setup() {
   // This loops around until at least one reader is detected
   int numReadersFound;
   while ((numReadersFound = tagReaders.scanForReaders()) == 0) {
-    DebugPrint("No readers found. Attach readers");
+    DebugPrintln("No readers found. Attach readers");
     delay(1000);
   }
 
   // Print the number of readers found
   DebugPrint("Found ");
   DebugPrint(numReadersFound);
-  DebugPrint(" readers");
+  DebugPrintln(" readers");
 }
 
 void loop() {

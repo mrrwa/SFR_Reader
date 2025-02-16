@@ -3,7 +3,12 @@
  *  Avoids 'blocking' caused by 'delay' using a timer and a flag for each instance and can scan 4 readers
  *  As each reader state changes, the SFR_Reader library call the Event Handler, providing access to the current state
  *
- *  This example emulates the MERG RFID Data Concentrator and sends serial data from a number of readers
+ *  This example emulates a USB Keyboard HID device and sends keypresses to a PC.
+ *  This is intended to be used to enter EID data into a spreadsheet and the keypress sequence makes this easier
+ *  The keypress sequence contains the following:
+ *  - the Reader number +1 to give numbers in the range 1..4
+ *  - a TAB, typically to advance input to the next cell in the sheet  
+ *  - the EID as an ASCII HEX String, followed by a <New Line> tp advance to the next row in the sheet
  *
  */
 
@@ -47,11 +52,9 @@ void readerEventHandler(int readerGroupId, int readerId, SRF_Read_Status readSta
     DebugPrint("-");
     DebugPrintln(pReader->StatusStr());
 
-    Serial.write('A' + readerId);
-    Serial.print(pReader->strMERG());
-    Serial.write(0x0D);  // CR
-    Serial.write(0x0A);  // LF
-    Serial.write('>');   // ETX replaced by '>'
+    Keyboard.print(readerId + 1);
+    Keyboard.print('\t');
+    Keyboard.println(pReader->strUID());
   }
 }
 
