@@ -2,14 +2,20 @@
 
 SFR_Reader					KEYWORD1
 SRF_Read_Status				KEYWORD1
-
+SFR_ReaderGroup				KEYWORD1
 
 # Methods and Functions (KEYWORD2)
 
 init						KEYWORD2
 scan						KEYWORD2
 strUID						KEYWORD2
+strMERG						KEYWORD2
 StatusStr					KEYWORD2
+
+registerReaderEventHandler	KEYWORD2
+begin						KEYWORD2
+scanForReaders				KEYWORD2
+process						KEYWORD2
 
 # Constants (LITERAL1)
 
