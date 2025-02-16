@@ -8,9 +8,8 @@
  */
 
 #include <SFR_Reader.h>
-#include <Keyboard.h>
 
-// As this sketch is intended to emulate a USB Keyboard HID Device, we normally diable all monitor output, but uncomment the line below to enable
+// As this sketch is intended to emulate a MERG RFID Recener Concentrator Device, we normally diable all monitor output, but uncomment the line below to enable
 // monitor output for debugging purposes
 
 // #define ENABLE_DEBUG
@@ -63,9 +62,7 @@ void setup() {
     delay(10);
 #endif
 
-  DebugPrint("Starfish Rail RFID HID Keybaord example");
-
-  Keyboard.begin();
+  DebugPrint("Starfish Rail RFID MERG_Concentrator Example");
 
   // Register the readerEventHandler function to be called when any SFR_Reader object changes state
   tagReaders.registerReaderEventHandler(readerEventHandler);
